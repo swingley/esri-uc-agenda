@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <style>
+      html, body {
+        font-family: sans-serif;
+        height: 100%; 
+        margin: 0; 
+        padding: 0; 
+        width: 100%; 
+      }
+      div, form {
+        padding: 0.5em;
+      }
+      div.day {
+        background: #eee;
+        color: #777;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      div.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div id="conf"></div>
+      <div>
+        <label for="term">Filter:  </label>
+        <input id="term">
+      </div>
+      <div id="count"></div>
+    </div>
+    
+    <script src="//ajax.googleapis.com/ajax/libs/dojo/1.9.1/dojo/dojo.js" 
+            data-dojo-config="async: 1"></script>
+    <script>
+      var all = [];
+
+      require([
+        "dojo/request", "dojo/router",
+        "dojo/dom", "dojo/dom-construct", "dojo/dom-class",
+        "dojo/on", "dojo/query",
+        "dojo/date", "dojo/date/locale", 
+      ], function(
+        request, router, 
+        dom, domConstruct, domClass,
+        on, query,
+        date, locale
+      ) {
+        request("sessions-culled.json").then(
+          function(response) {
+            console.log("response", JSON.parse(response));
+            // Build the DOM.
+            show(JSON.parse(response));
+          },
+          function(error) {
+            console.log("error", error);
+          }
+        );
+
+        function show(seshes) {
+          var wrap = dom.byId("wrap");
+          // Conference title.
+          var conf = seshes.conference.results[0];
+          dom.byId("conf").innerHTML = "<a href=\"http://www.esri.com/events/user-conference/agenda\">" + 
+            conf.fullname + " " + conf.year + "</a>";
+
+          // Sessions.
+          var s = seshes.sessionsView.results;
+          var prevDay;
+          s.forEach(function(i) {
+            if ( i.startDay !== prevDay ) {
+              prevDay = i.startDay;
+              var d = i.startDate.split(" ")[0].split("/");
+              domConstruct.create("div", {
+                class: "day",
+                innerHTML: d[0] + "/" + d[1] + "/" + d[2]
+              }, wrap);
+            }
+
+            var duration = calcDuration(i); 
+            var start = locale.format(new Date(i.startDate), {
+              selector: "time", 
+              timePattern: "h:mm a"
+            });
+
+            var c = "<strong>" + i.sessionTitle + "</strong>, " + 
+              start + duration + "<br>Where:  " + i.room;
+            if ( i.eventTypeID === "4" || i.eventTypeID === "27" || i.eventTypeID === "19" ) {
+              // Event type ID of 4 and 27 correspond to 
+              // tech workshops and demo theaters, respectively.
+              // 19 is conference activity, including so that speed geeking shows up here
+              // Hack up session description, take the first sentence only.
+              var desc = i.sessionDescription.split(". ")[0];
+              var by = i.contacts;
+              if ( desc ) {
+                c = c + "<br>" + desc;
+              }
+              if ( by ) {
+                c = c + ".<br>By:  " + i.contacts;
+              } 
+              if ( i.sessionID && i.offeringID) {
+                c = c + "<br>Session ID:  " + i.sessionID + ", offering:  " + i.offeringID;
+              }
+            }
+            all.push(domConstruct.create("div", {
+              class: "sesh",
+              id: i.sessionID + "-" + i.offeringID,
+              innerHTML: c
+            }, wrap));
+          });
+          updateCount();
+
+          // Event listener for filtering.
+          on(dom.byId("term"), "keyup", function(e) {
+            // console.log("keyup", e, this.value);
+            // var val = this.value.toLowerCase();
+            if ( this.value ) {
+              router.go("search/" + this.value);
+            } else {
+              router.go("");
+            }
+          });
+
+          // If there's a search term in the URL, put it in the text box.
+          var term = dom.byId("term");
+          var hash = window.location.hash;
+          if ( hash.indexOf("search/") > -1 ) {
+            console.log("hash has 'search/'", hash);
+            term.value = hash.split("search/")[1];
+          }
+
+          // Use dojo/router to manager page hash and link to 
+          // pages that show a filtered selection of sessions.
+          router.register("search/:value", sessionFilter);
+          router.register("", reset);
+          router.startup();
+
+          // Give filter box focus
+          term.focus();
+        }
+
+        function sessionFilter(e) {
+          var val = e.params.value.toLowerCase();
+          all.forEach(function(n) {
+            if ( n.textContent.toLowerCase().indexOf(val) > -1 ) {
+              domClass.remove(n, "hidden");
+            } else {
+              domClass.add(n, "hidden");
+            }
+          });
+          updateCount();
+        }
+
+        function reset() {
+          all.forEach(function(n) {
+            domClass.remove(n, "hidden");
+          });
+          updateCount();
+        }
+
+        function calcDuration(d) {
+          var s = new Date(d.startDate);
+          var e = new Date(d.endDate);
+          var dur = date.difference(s, e, "minute");
+          var hours = parseInt(dur / 60);
+          var minutes = dur % 60;
+          if ( hours > 10 ) {
+            return ", all day.";
+          }
+          if ( hours >= 2 ) {
+            return ", " + hours + " hours.";
+          }
+          return ", " + dur + " minutes.";
+        }
+
+        function updateCount() {
+          dom.byId("count").innerHTML = "Displaying " + 
+            query("div.sesh:not(.hidden)").length + " sessions";
+        }
+      });
+    </script>
+  </body>
+</html>

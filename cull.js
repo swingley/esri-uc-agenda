@@ -3,7 +3,7 @@ var fs = require("fs");
 // sessions.json is the response from 
 // http://cdh.esri.com/2.0/?action=getWebAppData&confid=65
 // it's ~3.5MB
-// after removing unused info, it's ~1MB
+// after removing unused info, it's ~1MB, probably ~200K gzipped
 var source = "sessions.json";
 var out = "sessions-culled.json";
 
@@ -13,7 +13,7 @@ fs.exists(out, function(exists) {
       go();
     });
   } else {
-    go()
+    go();
   }
 });
 
@@ -45,9 +45,7 @@ function sessions(data) {
   relevant.sessionsView.count = s.sessionsView.count;
   relevant.sessionsView.results = results.map(function(session) {
     return {
-      // startMonth: session.startMonth,
       startDay: session.startDay,
-      // startYear: session.startYear,
       startDate: session.startDate,
       endDate: session.endDate,
       sessionTitle: session.sessionTitle,

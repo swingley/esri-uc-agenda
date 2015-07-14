@@ -151,7 +151,7 @@
           var val = e.params.value.toLowerCase();
           all.forEach(function(n) {
             if ( n.textContent.toLowerCase().indexOf(val) > -1 || 
-                 n.getAttribute("data-full").toLowerCase().indexOf("javascript") > -1) {
+                 n.getAttribute("data-full").toLowerCase().indexOf(val) > -1) {
               domClass.remove(n, "hidden");
             } else {
               domClass.add(n, "hidden");

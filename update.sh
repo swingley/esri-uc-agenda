@@ -1,6 +1,6 @@
 #!/bin/bash
 
-curl -G -d action=getWebAppData -d confid=65 http://cdh.esri.com/2.0/ > curl-sessions.json
+curl -G -d action=getWebAppData -d confid=93 http://cdh.esri.com/4.0/ > curl-sessions.json
 
 F1=sessions.json
 F2=curl-sessions.json
@@ -17,4 +17,3 @@ if [ $S1 -ne $S2 ]; then
 else 
   echo "Files same size, no need to update."
 fi
-rm curl-sessions.json
